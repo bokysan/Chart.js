@@ -53,8 +53,16 @@ module.exports = function(Chart) {
 		draw: function() {
 			var ctx = this._chart.ctx;
 			var vm = this._view;
-			var left, right, top, bottom, signX, signY, borderSkipped;
-			var borderWidth = vm.borderWidth;
+			var left, right, top, bottom, signX, signY;
+
+			// Like CSS:
+			// - one border to rule them all
+			// - top-bottom + left-right
+			// - top + right + bottom + left
+			var borderWidth = !vm.borderWidth ? [] : vm.borderWidth instanceof Array ? vm.borderWidth : [ vm.borderWidth ];
+
+			// Define which borders will be skipped. Esentially the same as setting borderWidth to 0
+			var borderSkipped = !vm.borderSkipped ? [] : vm.borderSkipped instanceof Array ? vm.borderSkipped : [ vm.borderSkipped ];
 
 			if (!vm.horizontal) {
 				// bar
@@ -64,7 +72,7 @@ module.exports = function(Chart) {
 				bottom = vm.base;
 				signX = 1;
 				signY = bottom > top? 1: -1;
-				borderSkipped = vm.borderSkipped || 'bottom';
+				borderSkipped = vm.borderSkipped || ['bottom'];
 			} else {
 				// horizontal bar
 				left = vm.base;
@@ -73,21 +81,47 @@ module.exports = function(Chart) {
 				bottom = vm.y + vm.height / 2;
 				signX = right > left? 1: -1;
 				signY = 1;
-				borderSkipped = vm.borderSkipped || 'left';
+				borderSkipped = vm.borderSkipped || ['left'];
+			}
+
+
+			// borderWidth shold be less than bar width and bar height.
+			// ..,maximum border width for left-right borders
+			var barSizeLeftRight = Math.abs(left - right);
+			// ...maximum border width for top-bottom borders
+			var barSizeTopBottom = Math.abs(top - bottom);
+		  function getBorderWidth(border) {
+				if(borderWidth.length == 1) {
+					if(border == 'top' || border == 'bottom') {
+						return borderWidth[0] > barSizeTopBottom ? barSizeTopBottom : borderWidth[0];
+					} else {
+						return borderWidth[0] > barSizeLeftRight ? barSizeLeftRight : borderWidth[0];
+					}
+				} else if(borderWidth.length == 2) {
+					if(border == 'top' || border == 'bottom') {
+						return borderWidth[0] > barSizeTopBottom ? barSizeTopBottom : borderWidth[0];
+					} else {
+						return borderWidth[1] > barSizeLeftRight ? barSizeLeftRight : borderWidth[1];
+					}
+				} else if(border == 'top') {
+					return borderWidth[0] > barSizeTopBottom ? barSizeTopBottom : borderWidth[0];
+				} else if(border == 'right') {
+					return borderWidth[1] > barSizeLeftRight ? barSizeLeftRight : borderWidth[1];
+				} else if(border == 'bottom') {
+					return borderWidth[2] > barSizeTopBottom ? barSizeTopBottom : borderWidth[2];
+				} else {
+					return borderWidth[3] > barSizeLeftRight ? barSizeLeftRight : borderWidth[3];
+				}
 			}
 
 			// Canvas doesn't allow us to stroke inside the width so we can
 			// adjust the sizes to fit if we're setting a stroke on the line
-			if (borderWidth) {
-				// borderWidth shold be less than bar width and bar height.
-				var barSize = Math.min(Math.abs(left - right), Math.abs(top - bottom));
-				borderWidth = borderWidth > barSize? barSize: borderWidth;
-				var halfStroke = borderWidth / 2;
+			if (borderWidth.length > 0) {
 				// Adjust borderWidth when bar top position is near vm.base(zero).
-				var borderLeft = left + (borderSkipped !== 'left'? halfStroke * signX: 0);
-				var borderRight = right + (borderSkipped !== 'right'? -halfStroke * signX: 0);
-				var borderTop = top + (borderSkipped !== 'top'? halfStroke * signY: 0);
-				var borderBottom = bottom + (borderSkipped !== 'bottom'? -halfStroke * signY: 0);
+				var borderLeft = left + (!borderSkipped.includes('left') ? (getBorderWidth('left') / 2) * signX : 0);
+				var borderRight = right + (!borderSkipped.includes('right') ? (-getBorderWidth('right') / 2) * signX : 0);
+				var borderTop = top + (!borderSkipped.includes('top') ? (getBorderWidth('top') / 2) * signY : 0);
+				var borderBottom = bottom + (!borderSkipped.includes('bottom') ? (-getBorderWidth('bottom') / 2) * signY : 0);
 				// not become a vertical line?
 				if (borderLeft !== borderRight) {
 					top = borderTop;
@@ -100,43 +134,51 @@ module.exports = function(Chart) {
 				}
 			}
 
+			// Draw the inside first...
 			ctx.beginPath();
 			ctx.fillStyle = vm.backgroundColor;
-			ctx.strokeStyle = vm.borderColor;
-			ctx.lineWidth = borderWidth;
 
-			// Corner points, from bottom-left to bottom-right clockwise
-			// | 1 2 |
-			// | 0 3 |
-			var corners = [
-				[left, bottom],
-				[left, top],
-				[right, top],
-				[right, bottom]
-			];
-
-			// Find first (starting) corner with fallback to 'bottom'
-			var borders = ['bottom', 'left', 'top', 'right'];
-			var startCorner = borders.indexOf(borderSkipped, 0);
-			if (startCorner === -1) {
-				startCorner = 0;
+			var borders = {
+				'bottom': [ [ left, bottom ], [ right, bottom ] ],
+				'right': [ [ right, bottom ], [ right, top ] ],
+				'top': [ [ right, top ], [ left, top ]],
+				'left': [ [ left, top ], [ left, bottom ] ],
+			};
+			ctx.strokeStyle = "rgba(0,0,0,0)";
+			ctx.lineWidth = 0;
+			ctx.moveTo(left, bottom);
+			for(var i in borders) {
+				var border = borders[i];
+				ctx.lineTo(border[1][0], border[1][1]);
 			}
-
-			function cornerAt(index) {
-				return corners[(startCorner + index) % 4];
-			}
-
-			// Draw rectangle from 'startCorner'
-			var corner = cornerAt(0);
-			ctx.moveTo(corner[0], corner[1]);
-
-			for (var i = 1; i < 4; i++) {
-				corner = cornerAt(i);
-				ctx.lineTo(corner[0], corner[1]);
-			}
-
+			ctx.lineTo(left, bottom);
 			ctx.fill();
-			if (borderWidth) {
+
+			// ...and draw the borders second
+
+			// Make sure border lengths are adjusted for border with
+			if(!borderSkipped.includes("top") && getBorderWidth("top") > 0) {
+				borders['left'] = [ [ borders['left'][0][0], borders['left'][0][1] - getBorderWidth("top")/2 ], borders['left'][1] ];
+				borders['right'] = [ borders['right'][0], [ borders['right'][1][0], borders['right'][1][1] - getBorderWidth("top")/2 ] ];
+			}
+			if(!borderSkipped.includes("bottom") && getBorderWidth("bottom") > 0) {
+				borders['left'] = [ borders['left'][0], [ borders['left'][1][0], borders['left'][1][1] + getBorderWidth("bottom")/2 ] ];
+				borders['right'] = [ [ borders['right'][0][0], borders['right'][0][1] + getBorderWidth("bottom")/2 ], borders['right'][1] ];
+			}
+
+			// Draw the borders. Since canvas doesn't allow drawing the borders with
+			// different widths, draw each line individually.
+			ctx.strokeStyle = vm.borderColor;
+			for(var i in borders) {
+				var border = borders[i];
+				ctx.lineWidth = getBorderWidth(i);
+				if(borderSkipped.includes(i) || !ctx.lineWidth || ctx.lineWidth == 0) {
+					// Skip drawing the border
+					continue;
+				}
+				ctx.beginPath();
+				ctx.moveTo(border[0][0], border[0][1]);
+				ctx.lineTo(border[1][0], border[1][1]);
 				ctx.stroke();
 			}
 		},
