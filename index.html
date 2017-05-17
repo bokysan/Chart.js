@@ -1,0 +1,153 @@
+<html>
+
+<head>
+  <title>Input box</title>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script type="text/javascript" src="dist/Chart.bundle.js"></script>
+  <style type="text/css">
+    html, body {
+    	background: #E5E5E5;
+    }
+
+    html, body, p, tr, td, ol, ul, li {
+    	font-family: Roboto;
+    	color: #939698;
+    	font-size: 16px;
+    }
+
+    body {
+    	padding: 50px;
+    }
+
+    div.panel {
+      background: #FFF;
+      box-shadow: 0 1px 6px 0 rgba(0,0,0,0.2);
+      min-height: 50px;
+      min-width: 200px;
+      margin-right: 20px;
+    }
+    div.canvas {
+      height: 300px;
+      width: 520px;
+    }
+    .container {
+      display: inline-flex;
+    }
+  </style>
+</head>
+
+<body>
+ <div class="container">
+   <div class="panel canvas">
+    <canvas id="chart1" height="300" width="520"></canvas>
+   </div>
+   <div class="panel canvas">
+     <canvas id="chart2" height="300" width="520"></canvas>
+   </div>
+ </div>
+ <script>
+
+ var manufacturers = [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" ];
+
+ new Chart($("#chart1"), {
+   type: 'bar',
+   data: {
+     labels: manufacturers,
+     datasets: [{
+       label: "Games played",
+       data: (function() {
+         var result = [];
+         var avg = 1231;
+         for(var i = 1; i<=31; i++) {
+           result.push(avg);
+           var avg = avg + (Math.random()-0.2) * 78;
+         }
+         return result;
+       })(),
+       fill: true,
+       borderColor: "rgba(41, 211, 115, 1.00)",
+       backgroundColor: "#D1F6E2",
+       pointBackgroundColor: "rgba(41, 211, 115, 1.00)",
+     }]
+   },
+   options: {
+     elements: {
+        rectangle: {
+          borderSkipped: [ 'bottom', 'left', 'right' ],
+        }
+     },
+     responsive: true,
+     title: {
+       display: false,
+     },
+     legend: {
+       display: false,
+     },
+     scales: {
+       xAxes: [{
+         display: false,
+         stacked: false,
+       }],
+       yAxes: [{
+         display: true,
+         gridLines: {
+           display: false
+         }
+       }],
+     }
+   }
+ });
+
+ new Chart($("#chart2"), {
+   type: 'horizontalBar',
+   data: {
+     labels: manufacturers,
+     datasets: [{
+       label: "Games played",
+       data: (function() {
+         var result = [];
+         var avg = 1231;
+         for(var i = 1; i<=31; i++) {
+           result.push(avg);
+           var avg = avg + (Math.random()-0.2) * 78;
+         }
+         return result;
+       })(),
+       fill: true,
+       borderColor: "rgba(41, 211, 115, 1.00)",
+       backgroundColor: "#D1F6E2",
+       pointBackgroundColor: "rgba(41, 211, 115, 1.00)",
+     }]
+   },
+   options: {
+     elements: {
+        rectangle: {
+          borderSkipped: [ 'left', 'right' ],
+        }
+     },
+     responsive: true,
+     title: {
+       display: false,
+     },
+     legend: {
+       display: false,
+     },
+     scales: {
+       xAxes: [{
+         display: false,
+         stacked: false,
+       }],
+       yAxes: [{
+         display: true,
+         gridLines: {
+           display: false
+         }
+       }],
+     }
+   }
+ });
+
+ </script>
+</body>
+
+</html>
